@@ -1,7 +1,6 @@
 package my.hanitracker.firebase
 
 import android.annotation.SuppressLint
-import android.util.Log
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import java.lang.Exception
@@ -26,6 +25,12 @@ object FirebaseFireStore {
 
     fun getData(collection: String, document: String, onSuccess : (DocumentSnapshot) -> Unit, onFailure : (Exception) -> Unit){
         firebaseFireStore.collection(collection).document(document).get().addOnSuccessListener(onSuccess).addOnFailureListener(onFailure)
+    }
+
+    fun ifDocumentExists(collection: String, document: String, onSuccess: (Boolean) -> Unit, onFailure : (Exception) -> Unit) {
+        firebaseFireStore.collection(collection).document(document).get()
+            .addOnSuccessListener { onSuccess(it.exists()) }
+            .addOnFailureListener { onFailure(it) }
     }
 
 }

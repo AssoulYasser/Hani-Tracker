@@ -4,6 +4,8 @@ import android.net.Uri
 
 
 object UserLocalStorage {
+    lateinit var userId: String
+        private set
     lateinit var firstName: String
         private set
     lateinit var lastName: String
@@ -13,7 +15,8 @@ object UserLocalStorage {
     lateinit var photo: Uri
         private set
 
-    fun setUser(firstName: String, lastName: String, email: String, photo: Uri){
+    fun setUser(userId: String, firstName: String, lastName: String, email: String, photo: Uri){
+        this.userId = userId
         this.firstName = firstName
         this.lastName = lastName
         this.email = email

@@ -20,17 +20,17 @@ import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import my.hanitracker.firebase.FirebaseAuthentication.EmailAuthenticator.emailLastSignIn
 import my.hanitracker.firebase.FirebaseAuthentication.GoogleAuthenticator.googleLastSignIn
 
 object FirebaseAuthentication {
-    private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val firebaseAuth: FirebaseAuth = Firebase.auth
 
-    fun hasSignedIn(token: String?) : Boolean {
-        return if (token == null)
-            googleLastSignIn()
-        else
-            googleLastSignIn() || emailLastSignIn(token)
+    fun hasSignedIn(context: Context) : Boolean {
+        return googleLastSignIn(context)
     }
 
     fun signOut(context: Context, onCompleteListener: OnCompleteListener<Void>){
@@ -45,8 +45,8 @@ object FirebaseAuthentication {
 
     object GoogleAuthenticator {
 
-        fun googleLastSignIn(): Boolean {
-            return false
+        fun googleLastSignIn(context: Context): Boolean {
+            return GoogleSignIn.getLastSignedInAccount(context) != null
         }
 
     }
@@ -84,7 +84,7 @@ object FirebaseAuthentication {
 
         fun emailLastSignIn(token: String) : Boolean {
             var isValidToken = false
-            firebaseAuth.signInWithCustomToken(token).addOnSuccessListener { isValidToken = true }
+//            firebaseAuth.signInWithCustomToken(token).addOnSuccessListener { isValidToken = true }
             return isValidToken
         }
 

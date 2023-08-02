@@ -32,28 +32,23 @@ class LocationService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "onCreate: START")
         locationTracker = LocationTracker(
             applicationContext,
             LocationServices.getFusedLocationProviderClient(applicationContext)
         )
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        Log.d(TAG, "onCreate: END")
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "onStartCommand: START")
         when(intent?.action){
             START -> startCoroutine()
             STOP -> stopCoroutine()
             ENABLE_GPS -> enableGps()
         }
-        Log.d(TAG, "onStartCommand: END")
         return super.onStartCommand(intent, flags, startId)
     }
 
     private fun enableGps() {
-        Log.d(TAG, "enableGps: START")
 
         val goToGpsSettingsIntent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
         val goToGpsSettingsIntentPendingIntent = PendingIntent.getActivity(this, 0, goToGpsSettingsIntent, PendingIntent.FLAG_IMMUTABLE)
@@ -74,15 +69,20 @@ class LocationService : Service() {
 
         notificationManager.notify(resources.getInteger(R.integer.location_update), notification)
 
-        Log.d(TAG, "enableGps: END")
     }
 
     private fun startCoroutine() {
-        Log.d(TAG, "startCoroutine: START")
+
+        val closeServiceIntent = Intent(this, LocationBroadCast::class.java).apply {
+            action = STOP
+        }
+        val closeServicePendingIntent = PendingIntent.getBroadcast(this, 0, closeServiceIntent, PendingIntent.FLAG_IMMUTABLE)
+
         val notification = NotificationCompat.Builder(this, getString(R.string.location_tracking_notification))
             .setContentTitle("Tracking Location ...")
             .setContentText("Location: calculating ...")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .addAction(R.drawable.baseline_close_24, "Stop tracking", closeServicePendingIntent)
             .setOngoing(true)
 
         locationTracker.checkHardwareAvailability(1000L)
@@ -95,8 +95,10 @@ class LocationService : Service() {
                     locationTracker.checkHardwareAvailability(1000L)
                     locationTracker.isCheckingTheHardware = true
                 }
-                val latitude = location.latitude.toString()
-                val longitude = location.longitude.toString()
+                CurrentLocation.isTracking.value = true
+                val latitude = location.latitude
+                val longitude = location.longitude
+                CurrentLocation.setLocation(latitude, longitude)
                 val updateNotification = notification.setContentText("Location: ($latitude , $longitude)")
                 notificationManager.notify(resources.getInteger(R.integer.location_update), updateNotification.build())
             }
@@ -105,23 +107,18 @@ class LocationService : Service() {
         notificationManager.notify(resources.getInteger(R.integer.location_update), notification.build())
 
         startForeground(resources.getInteger(R.integer.location_update), notification.build())
-
-        Log.d(TAG, "startCoroutine: END")
-
     }
 
     private fun stopCoroutine() {
-        Log.d(TAG, "stopCoroutine: START")
+        CurrentLocation.stopStreamingLocation()
+        CurrentLocation.isTracking.value = false
         stopForeground(true)
         stopSelf()
-        Log.d(TAG, "stopCoroutine: END")
     }
 
     override fun onDestroy() {
-        Log.d(TAG, "onDestroy: START")
         super.onDestroy()
         service.cancel()
-        Log.d(TAG, "onDestroy: END")
     }
 
     companion object {

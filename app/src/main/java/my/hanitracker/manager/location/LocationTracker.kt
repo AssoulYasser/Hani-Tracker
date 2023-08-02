@@ -19,6 +19,7 @@ import com.google.android.gms.location.LocationResult
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import my.hanitracker.firebase.FirebaseRealtimeStore
 import my.hanitracker.manager.PermissionManager
 import my.hanitracker.manager.PermissionManager.isPermissionGranted
 import java.util.Timer
@@ -26,7 +27,6 @@ import java.util.TimerTask
 
 class LocationTracker(private val context : Context, private val client: FusedLocationProviderClient) : LocationClient {
 
-    private val TAG = "DEBUGGING : "
     var isCheckingTheHardware = true
 
     private fun Context.hasLocationPermission() : Boolean =
@@ -34,7 +34,6 @@ class LocationTracker(private val context : Context, private val client: FusedLo
 
     @SuppressLint("MissingPermission")
     override fun getLocationUpdate(interval: Long): Flow<Location> = callbackFlow {
-        Log.d(TAG, "getLocationUpdate: START")
         if (!context.hasLocationPermission())
             throw LocationClient.LocationException("PERMISSION NOT GRANTED")
 
@@ -43,10 +42,8 @@ class LocationTracker(private val context : Context, private val client: FusedLo
 
         val locationRequestCallBack = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
-                Log.d(TAG, "onLocationResult: START")
                 super.onLocationResult(result)
                 result.locations.lastOrNull()?.let { location -> launch { send(location) } }
-                Log.d(TAG, "onLocationResult: END")
             }
         }
 
@@ -77,6 +74,7 @@ class LocationTracker(private val context : Context, private val client: FusedLo
                             context.startService(this)
                         }
                         isCheckingTheHardware = false
+                        CurrentLocation.isTracking.value = false
                         statusCheckTimer.cancel()
                     }
 
@@ -86,6 +84,7 @@ class LocationTracker(private val context : Context, private val client: FusedLo
                             context.startService(this)
                         }
                         isCheckingTheHardware = false
+                        CurrentLocation.isTracking.value = false
                         statusCheckTimer.cancel()
                     }
                 }

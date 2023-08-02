@@ -33,15 +33,19 @@ class AuthenticationActivity: ComponentActivity(){
     private lateinit var googleSignInOptions: GoogleSignInOptions
     private lateinit var googleSignInClient: GoogleSignInClient
     private lateinit var sharedPreferences : SharedPreferences
-    private var GOOGLE_SIGN_IN_REQUEST_CODE = 100
-    private var TAG = "DEBUGGING : "
+
+    companion object {
+        private const val GOOGLE_SIGN_IN_REQUEST_CODE = 100
+        private const val TAG = "DEBUGGING : "
+    }
+
+
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         initInstences()
-
         setContent {
             val isSigned = remember { mutableStateOf(true) }
             val emailOnError = remember { mutableStateOf(false) }
@@ -60,9 +64,8 @@ class AuthenticationActivity: ComponentActivity(){
                 isLoading.value = false
             }
 
-            if(sharedPreferences.getString("token", null)?.let { FirebaseAuthentication.hasSignedIn(it) } == true) {
-                startLoading()
-                signIn { endLoading() }
+            if(FirebaseAuthentication.hasSignedIn(this)) {
+                Toast.makeText(this, "LAST SIGN IN", Toast.LENGTH_LONG).show()
             }
 
             HaniTrackerTheme {
@@ -162,6 +165,7 @@ class AuthenticationActivity: ComponentActivity(){
                                                     id = id,
                                                     onSuccessCallBack = { uri ->
                                                         UserLocalStorage.setUser(
+                                                            userId = id,
                                                             firstName = it.firstName,
                                                             lastName = it.lastName,
                                                             email = it.email,
@@ -225,6 +229,7 @@ class AuthenticationActivity: ComponentActivity(){
                         onSuccess = { uri ->
                             try {
                                 UserLocalStorage.setUser(
+                                    currentUser.uid,
                                     firstName = firstName.toString(),
                                     lastName = lastName.toString(),
                                     email = currentUser.email!!,
@@ -282,6 +287,14 @@ class AuthenticationActivity: ComponentActivity(){
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)
             if(task.isSuccessful) {
                 val googleAccount = task.getResult(ApiException::class.java)
+                UserLocalStorage.setUser(
+                    userId = googleAccount.id!!,
+                    firstName = googleAccount.givenName!!,
+                    lastName = googleAccount.familyName!!,
+                    email = googleAccount.email!!,
+                    photo = googleAccount.photoUrl!!
+                )
+                startActivity(Intent(this, MainActivity::class.java))
             } else {
                 Toast.makeText(this, "TASK UNSC", Toast.LENGTH_SHORT).show()
             }

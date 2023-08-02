@@ -14,6 +14,7 @@ import my.hanitracker.manager.PermissionManager.PERMISSION_REQUEST_CODE
 import my.hanitracker.manager.PermissionManager.isPermissionGranted
 import my.hanitracker.manager.PermissionManager.requestPermission
 import my.hanitracker.manager.PermissionManager.requestPermissions
+import my.hanitracker.manager.location.CurrentLocation
 import my.hanitracker.manager.location.LocationService
 import my.hanitracker.ui.screens.Main
 import my.hanitracker.ui.theme.HaniTrackerTheme
