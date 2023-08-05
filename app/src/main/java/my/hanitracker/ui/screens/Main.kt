@@ -1,7 +1,9 @@
 package my.hanitracker.ui.screens
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -31,20 +33,21 @@ import com.mapbox.maps.plugin.annotation.generated.PointAnnotationManager
 import com.mapbox.maps.plugin.annotation.generated.PointAnnotationOptions
 import com.mapbox.maps.plugin.annotation.generated.createPointAnnotationManager
 import my.hanitracker.R
+import my.hanitracker.firebase.FirebaseFireStore
 import my.hanitracker.firebase.FirebaseRealtimeStore
-import my.hanitracker.firebase.FirebaseUsers
-import my.hanitracker.manager.UserLocalStorage
+import my.hanitracker.location.CurrentLocation
 import my.hanitracker.manager.friends.FriendLocation
-import my.hanitracker.manager.friends.FriendLocationManager
-import my.hanitracker.manager.location.CurrentLocation
 import my.hanitracker.manager.setAnnotationBitmap
 import my.hanitracker.manager.uriToBitmap
 import my.hanitracker.ui.theme.CircularProgress
 
+private lateinit var firebaseRealtimeStore: FirebaseRealtimeStore
+private lateinit var firebaseFireStore: FirebaseFireStore
 private lateinit var map : MapView
 private lateinit var annotationApi : AnnotationPlugin
 private lateinit var pointAnnotationManager : PointAnnotationManager
 private var annotations = HashMap<String,PointAnnotation>()
+
 
 
 private fun addAnnotationToMap(
@@ -68,12 +71,13 @@ private fun addAnnotationToMap(
 }
 
 private fun updateAnnotationInMap(
-    context: Context,
-    friendLocation: FriendLocation
+    annotationUid: String,
+    latitude: Double,
+    longitude: Double
 ) {
-    if (annotations.containsKey(friendLocation.uid)) {
-        val mAnnotation = annotations[friendLocation.uid]!!
-        mAnnotation.point = Point.fromLngLat(friendLocation.longitude, friendLocation.latitude)
+    if (annotations.containsKey(annotationUid)) {
+        val mAnnotation = annotations[annotationUid]!!
+        mAnnotation.point = Point.fromLngLat(latitude, longitude)
     }
 
 }
@@ -98,6 +102,9 @@ fun Main(
 ) {
     val isLoading = remember { mutableStateOf(false) }
     val context = LocalContext.current
+    firebaseRealtimeStore = FirebaseRealtimeStore()
+    firebaseFireStore = FirebaseFireStore()
+    
 
     fun startLoading() {
         isLoading.value = true
@@ -136,39 +143,39 @@ fun Main(
         if (CurrentLocation.isTracking.value) {
             Log.d("DEBUGGING : ", "Main: START TRACKING")
             startLoading()
-
-            FirebaseRealtimeStore.trackData(
+            firebaseRealtimeStore.trackData(
                 "location",
-                onAdd = {
-                    FirebaseUsers.getUserData(uid =  it.key!!, onSuccess = {}, onFailure = {})
-//                    val uid = it.key!!
-//                    if (annotations.containsKey(uid))
-//                        return@trackData
-//                    val location = it.value
-//                    val latitude : Double
-//                    val longitude : Double
-//                    if (location is Map<*, *>) {
-//                        latitude = location["latitude"] as Double
-//                        longitude = location["longitude"] as Double
-//                        Log.d(TAG, "data added : uid = $uid, latitude = $latitude, longitude = $longitude")
-//                        FriendLocationManager.fetchLocation(
-//                            uid = uid,
-//                            latitude = latitude,
-//                            longitude = longitude,
-//                            onSuccess = { friendLocation ->
-//                                addAnnotationToMap(context, friendLocation)
-//                            },
-//                            onFailure = { exception ->
-//                                throw exception
-//                            }
-//                        )
-//                    }
+                onAdd = { dataSnapshot ->
+                    firebaseFireStore.getDocumentWhereDataEqualTo(
+                        collection = "user",
+                        fieldName = "uid",
+                        fieldValue = dataSnapshot.key!!,
+                        onSuccess = { querySnapshot ->
+                            for (document in querySnapshot){
+                                val location = dataSnapshot.value
+                                if (location is Map<*, *>)
+                                    addAnnotationToMap(
+                                        context = context,
+                                        friendLocation = FriendLocation(
+                                            uid = dataSnapshot.key!!,
+                                            fullName = "${document.get("first name")} ${document.get("last name")}",
+                                            photo = Uri.parse(document.get("profile picture uri") as String),
+                                            latitude = location["latitude"] as Double,
+                                            longitude = location["longitude"] as Double
+                                        )
+                                    )
+                            }
+                        },
+                        onFailure = {
+                            Toast.makeText(context, it.message, Toast.LENGTH_LONG).show()
+                        })
                 },
                 onChange = {
-                    Log.d(TAG, "data changed : $it")
+                    val location = it.value as Map<*, *>
+                    updateAnnotationInMap(it.key!!, location["latitude"] as Double, location["longitude"] as Double)
                 },
                 onDelete = {
-                    Log.d(TAG, "data deleted : $it")
+                    deleteAnnotation(annotations[it.key!!]!!)
                 }
             )
 

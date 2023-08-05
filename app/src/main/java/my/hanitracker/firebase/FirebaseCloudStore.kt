@@ -6,7 +6,7 @@ import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
 import java.lang.Exception
 
-object FirebaseCloudStore {
+class FirebaseCloudStore {
     private val firebaseCloudStore: StorageReference = FirebaseStorage.getInstance().reference
     private lateinit var reference : StorageReference
 

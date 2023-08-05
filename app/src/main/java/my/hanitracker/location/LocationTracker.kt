@@ -1,31 +1,26 @@
-package my.hanitracker.manager.location
+package my.hanitracker.location
 
 import android.content.Context
 import android.location.Location
-import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.os.Looper
-import android.util.Log
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import my.hanitracker.firebase.FirebaseRealtimeStore
-import my.hanitracker.manager.PermissionManager
 import my.hanitracker.manager.PermissionManager.isPermissionGranted
 import java.util.Timer
 import java.util.TimerTask
 
-class LocationTracker(private val context : Context, private val client: FusedLocationProviderClient) : LocationClient {
+class LocationTracker(private val context : Context, private val client: FusedLocationProviderClient) :
+    LocationClient {
 
     var isCheckingTheHardware = true
 

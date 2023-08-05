@@ -15,38 +15,38 @@ object FriendLocationManager {
         onSuccess: (FriendLocation) -> Unit = {},
         onFailure: (Exception) -> Unit = {}
     ) {
-        FirebaseFireStore.getData(
-            collection = "user",
-            document = uid,
-            onSuccess = { user ->
-                FirebaseCloudStore.getFileUri(
-                    location = "user/$uid/pfp",
-                    onSuccess = { pfp ->
-                        val newUserLocation = FriendLocation(
-                            uid = uid,
-                            fullName = "${user["first name"]} ${user["last name"]}",
-                            photo = pfp!!,
-                            latitude = latitude,
-                            longitude = longitude
-                        )
-                        onSuccess(newUserLocation)
-                        Log.d(
-                            "DEBUGGING : ",
-                            "fetchLocations: new user : $newUserLocation"
-                        )
-
-                    },
-                    onFailure = {
-                        Log.d("DEBUGGING : ", "fetchLocations: $it")
-                        onFailure(it)
-                    }
-                )
-
-            },
-            onFailure = {
-                Log.d("DEBUGGING : ", "fetchLocations: $it")
-                onFailure(it)
-            })
+//        firebaseFireStore.getData(
+//            collection = "user",
+//            document = uid,
+//            onSuccess = { user ->
+//                FirebaseCloudStore.getFileUri(
+//                    location = "user/$uid/pfp",
+//                    onSuccess = { pfp ->
+//                        val newUserLocation = FriendLocation(
+//                            uid = uid,
+//                            fullName = "${user["first name"]} ${user["last name"]}",
+//                            photo = pfp!!,
+//                            latitude = latitude,
+//                            longitude = longitude
+//                        )
+//                        onSuccess(newUserLocation)
+//                        Log.d(
+//                            "DEBUGGING : ",
+//                            "fetchLocations: new user : $newUserLocation"
+//                        )
+//
+//                    },
+//                    onFailure = {
+//                        Log.d("DEBUGGING : ", "fetchLocations: $it")
+//                        onFailure(it)
+//                    }
+//                )
+//
+//            },
+//            onFailure = {
+//                Log.d("DEBUGGING : ", "fetchLocations: $it")
+//                onFailure(it)
+//            })
     }
 
 }

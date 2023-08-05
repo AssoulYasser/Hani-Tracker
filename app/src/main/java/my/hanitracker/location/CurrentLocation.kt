@@ -1,8 +1,6 @@
-package my.hanitracker.manager.location
+package my.hanitracker.location
 
-import android.content.Context
 import android.util.Log
-import android.widget.Toast
 import androidx.compose.runtime.mutableStateOf
 import my.hanitracker.firebase.FirebaseRealtimeStore
 import my.hanitracker.manager.UserLocalStorage
@@ -17,20 +15,18 @@ object CurrentLocation {
         private set
 
     fun setLocation(latitude : Double, longitude: Double){
-        this.latitude = latitude
-        this.longitude = longitude
+        CurrentLocation.latitude = latitude
+        CurrentLocation.longitude = longitude
         streamLocation()
     }
 
     private fun streamLocation() {
-
-        data class Location(val latitude : Double, val longitude: Double)
-
-        FirebaseRealtimeStore.storeData(
-            data = Location(latitude, longitude),
+        val firebaseRealtimeStore = FirebaseRealtimeStore()
+        firebaseRealtimeStore.storeData(
+            data = hashMapOf("latitude" to latitude, "longitude" to longitude),
             path = "location/${UserLocalStorage.userId}",
             onSuccess = {
-//                Log.d("DEBUGGING : ", "streamLocation: SUCCESS")
+                Log.d("DEBUGGING : ", "streamLocation: SUCCESS")
             },
             onFailure = {
                 Log.d("DEBUGGING : ", "streamLocation: FAIL")
@@ -39,9 +35,9 @@ object CurrentLocation {
     }
 
     fun stopStreamingLocation() {
-        data class Location(val latitude : Double, val longitude: Double)
+        val firebaseRealtimeStore = FirebaseRealtimeStore()
 
-        FirebaseRealtimeStore.storeData(
+        firebaseRealtimeStore.storeData(
             data = null,
             path = "location/${UserLocalStorage.userId}",
             onSuccess = { Log.d("DEBUGGING : ", "streamLocation: SUCCESS") },

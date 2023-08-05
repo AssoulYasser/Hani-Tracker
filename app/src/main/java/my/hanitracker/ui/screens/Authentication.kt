@@ -52,11 +52,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import my.hanitracker.R
-import my.hanitracker.manager.rememberImeState
 import my.hanitracker.ui.theme.Logo
 import my.hanitracker.ui.theme.Merriweather
 import my.hanitracker.ui.theme.SocialMediaAuthButton
 import my.hanitracker.ui.theme.UnderlinedTextField
+import my.hanitracker.ui.theme.rememberImeState
 
 
 @Composable

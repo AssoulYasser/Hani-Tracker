@@ -19,8 +19,8 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.HaniTracker"
         tools:targetApi="31">
-        <service android:name=".manager.location.LocationService" android:foregroundServiceType="location" />
-        <receiver android:name=".manager.location.LocationBroadCast" />
+        <service android:name=".location.LocationService" android:foregroundServiceType="location" />
+        <receiver android:name=".location.LocationBroadCast" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

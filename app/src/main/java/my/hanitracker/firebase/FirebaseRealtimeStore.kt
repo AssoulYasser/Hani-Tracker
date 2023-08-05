@@ -8,7 +8,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import java.lang.Exception
 
-object FirebaseRealtimeStore {
+class FirebaseRealtimeStore {
     private val firebaseRealtimeStore = FirebaseDatabase.getInstance().reference
 
     fun storeData(data: Any?, path: String, onSuccess : () -> Unit, onFailure : (Exception) -> Unit) {

@@ -1,4 +1,4 @@
-package my.hanitracker.manager.location
+package my.hanitracker.location
 
 import android.app.NotificationManager
 import android.app.PendingIntent

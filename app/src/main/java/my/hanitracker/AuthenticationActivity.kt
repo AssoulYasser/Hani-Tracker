@@ -1,8 +1,7 @@
 package my.hanitracker
 
-import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -14,44 +13,37 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.core.content.edit
 import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInClient
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.ApiException
-import my.hanitracker.firebase.FirebaseAuthentication
-import my.hanitracker.firebase.FirebaseCloudStore
-import my.hanitracker.firebase.FirebaseFireStore
-import my.hanitracker.manager.UserLocalStorage
+import my.hanitracker.firebase.AuthenticationBusinessLogic
 import my.hanitracker.ui.screens.Authentication
 import my.hanitracker.ui.theme.CircularProgress
 import my.hanitracker.ui.theme.HaniTrackerTheme
-import java.lang.NullPointerException
 
 
 class AuthenticationActivity: ComponentActivity(){
-    private lateinit var googleSignInOptions: GoogleSignInOptions
-    private lateinit var googleSignInClient: GoogleSignInClient
-    private lateinit var sharedPreferences : SharedPreferences
-
-    companion object {
-        private const val GOOGLE_SIGN_IN_REQUEST_CODE = 100
-        private const val TAG = "DEBUGGING : "
-    }
-
-
-
+    private lateinit var authenticationBusinessLogic : AuthenticationBusinessLogic
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        authenticationBusinessLogic = AuthenticationBusinessLogic(this)
 
-        initInstences()
         setContent {
             val isSigned = remember { mutableStateOf(true) }
+
+            val email = remember { mutableStateOf("") }
             val emailOnError = remember { mutableStateOf(false) }
+
+            val password = remember { mutableStateOf("") }
             val passwordOnError = remember {  mutableStateOf(false) }
+
+            val firstName = remember { mutableStateOf("") }
             val firstNameOnError = remember {  mutableStateOf(false) }
+
+            val lastName = remember { mutableStateOf("") }
             val lastNameOnError = remember {  mutableStateOf(false) }
+
+            val photo = remember { mutableStateOf<Uri?>(null) }
+
             val isDialogShown = remember { mutableStateOf(false) }
             val isLoading = remember { mutableStateOf(false) }
 
@@ -64,10 +56,6 @@ class AuthenticationActivity: ComponentActivity(){
                 isLoading.value = false
             }
 
-            if(FirebaseAuthentication.hasSignedIn(this)) {
-                Toast.makeText(this, "LAST SIGN IN", Toast.LENGTH_LONG).show()
-            }
-
             HaniTrackerTheme {
                 Surface(
                     modifier = Modifier
@@ -77,132 +65,138 @@ class AuthenticationActivity: ComponentActivity(){
                     Authentication(
                         isSigned = isSigned.value,
                         isDialogShown = isDialogShown,
-                        googleOnClick = { googleAuthentication() },
+                        googleOnClick = { authenticationBusinessLogic.googleSignInIntent() },
                         switchAuthOnClick = { isSigned.value = !isSigned.value },
                         emailOnChange = { newValue ->
-                            FirebaseAuthentication.EmailAuthenticator.setEmail(newValue)
+                            email.value = newValue
                             emailOnError.value = false
                         },
                         emailOnError = emailOnError.value,
                         passwordOnChange = { newValue ->
-                            FirebaseAuthentication.EmailAuthenticator.setPassword(newValue)
+                            password.value = newValue
                             passwordOnError.value = false
                         },
                         passwordOnError = passwordOnError.value,
                         firstNameOnChange = {newValue ->
-                            FirebaseAuthentication.EmailAuthenticator.setFirstName(newValue)
+                            firstName.value = newValue
                             firstNameOnError.value = false
                         },
                         firstNameOnError = firstNameOnError.value,
                         lastNameOnChange = {newValue ->
-                            FirebaseAuthentication.EmailAuthenticator.setLastName(newValue)
+                            lastName.value = newValue
                             lastNameOnError.value = false
                         },
                         lastNameOnError = lastNameOnError.value,
                         photoOnChange = {newValue ->
-                            FirebaseAuthentication.EmailAuthenticator.setPhoto(newValue)
+                            photo.value = newValue
                             lastNameOnError.value = false
                         },
                         onRegister = {
-                            if (!FirebaseAuthentication.EmailAuthenticator.checkEmailValidation()) {
-                                Toast.makeText(this, "Email Not Valid", Toast.LENGTH_SHORT).show()
-                                emailOnError.value = true
-                                return@Authentication
+                            startLoading()
+                            try {
+                                authenticationBusinessLogic.checkEmailAndPassword(email.value, password.value)
+
+                                if (isSigned.value)
+                                    authenticationBusinessLogic.checkAccountExistence(
+                                        email = email.value,
+                                        onSuccess = { accountExistence ->
+                                            when(accountExistence){
+                                                AuthenticationBusinessLogic.ACCOUNT_RELATED_WITH_GOOGLE_AUTHENTICATOR -> {
+                                                    Toast.makeText(this, "This email is used with Google Authenticator", Toast.LENGTH_LONG).show()
+                                                    authenticationBusinessLogic.googleSignInIntent()
+                                                }
+                                                AuthenticationBusinessLogic.ACCOUNT_RELATED_WITH_EMAIL_AND_PASSWORD -> {
+                                                    authenticationBusinessLogic.signIn(
+                                                        email = email.value,
+                                                        password = password.value,
+                                                        onSuccess = {
+                                                            endLoading()
+                                                            authenticationSuccess()
+                                                        },
+                                                        onFailure = {
+                                                            endLoading()
+                                                            Toast.makeText(this, authenticationBusinessLogic.getExceptionMessage(it), Toast.LENGTH_LONG).show()
+                                                        })
+                                                }
+                                                else -> {
+                                                    Toast.makeText(this, "Invalid account detected", Toast.LENGTH_LONG).show()
+                                                    emailOnError.value = true
+                                                }
+                                            }
+                                        },
+                                        onFailure = {
+                                            Toast.makeText(this, authenticationBusinessLogic.getExceptionMessage(it), Toast.LENGTH_LONG).show()
+                                            endLoading()
+                                        }
+                                    )
+
+                                else
+                                    authenticationBusinessLogic.checkAccountExistence(
+                                        email.value,
+                                        onSuccess = { accountExistence ->
+                                            when(accountExistence) {
+                                                AuthenticationBusinessLogic.ACCOUNT_RELATED_WITH_EMAIL_AND_PASSWORD -> {
+                                                    Toast.makeText(
+                                                        this,"Email has already been used", Toast.LENGTH_LONG).show()
+                                                    emailOnError.value = true
+                                                }
+
+                                                AuthenticationBusinessLogic.ACCOUNT_RELATED_WITH_GOOGLE_AUTHENTICATOR -> {
+                                                    Toast.makeText(this, "This email is used with Google Authenticator", Toast.LENGTH_LONG).show()
+                                                    authenticationBusinessLogic.googleSignInIntent()
+                                                    emailOnError.value = true
+                                                }
+
+                                                else -> {
+                                                    isDialogShown.value = true
+                                                    endLoading()
+                                                }
+                                            }
+
+                                        },
+                                        onFailure = {
+                                            Toast.makeText(this, it.message, Toast.LENGTH_LONG).show()
+                                        }
+                                    )
+
+
+                            } catch (e : Exception) {
+                                Toast.makeText(this, e.message, Toast.LENGTH_LONG).show()
+                                when(e.message){
+                                    AuthenticationBusinessLogic.EMAIL_VALIDATION_EXCEPTION_MESSAGE -> emailOnError.value = true
+                                    AuthenticationBusinessLogic.PASSWORD_VALIDATION_EXCEPTION_MESSAGE -> passwordOnError.value = true
+                                    AuthenticationBusinessLogic.FIRST_NAME_VALIDATION_EXCEPTION_MESSAGE -> firstNameOnError.value = true
+                                    AuthenticationBusinessLogic.LAST_NAME_VALIDATION_EXCEPTION_MESSAGE -> lastNameOnError.value = true
+                                }
+                                endLoading()
                             }
 
-                            if (!FirebaseAuthentication.EmailAuthenticator.checkPasswordValidation()){
-                                Toast.makeText(this, "Password Not Valid", Toast.LENGTH_SHORT).show()
-                                passwordOnError.value = true
-                                return@Authentication
-                            }
 
-                            if (isSigned.value) {
-                                startLoading()
-                                signIn {
-                                    endLoading()
-                                }
-                            }
-                            else
-                                try {
-                                    startLoading()
-                                    FirebaseAuthentication.EmailAuthenticator.checkEmailExistence {doesExists ->
-                                        endLoading()
-                                        if (doesExists)
-                                            Toast.makeText(this, "Email Already Exists", Toast.LENGTH_SHORT).show()
-                                        else
-                                            isDialogShown.value = true
-                                    }
-                                } catch (e:Exception){
-                                    Toast.makeText(this, "Error : ${e.message}", Toast.LENGTH_SHORT).show()
-                                }
+
                         },
                         onSubmit = {
-
-                            if (!FirebaseAuthentication.EmailAuthenticator.checkFirstNameValidation()){
-                                Toast.makeText(this, "First Name Not Valid", Toast.LENGTH_SHORT).show()
-                                firstNameOnError.value = true
-                                return@Authentication
-                            }
-                            if (!FirebaseAuthentication.EmailAuthenticator.checkLastNameValidation()){
-                                Toast.makeText(this, "Last Name Not Valid", Toast.LENGTH_SHORT).show()
-                                lastNameOnError.value = true
-                                return@Authentication
-                            }
-                            if (!FirebaseAuthentication.EmailAuthenticator.checkPhotoValidation()){
-                                Toast.makeText(this, "Photo must be provided", Toast.LENGTH_SHORT).show()
-                                return@Authentication
+                            try {
+                                authenticationBusinessLogic.checkOtherFields(firstName.value, lastName.value, photo.value)
+                            } catch (e: Exception){
+                                Toast.makeText(this, e.message, Toast.LENGTH_LONG).show()
                             }
 
-                            FirebaseAuthentication.EmailAuthenticator.also {
-                                startLoading()
-                                it.createAccount(
-                                    onSuccessCallBack = { authResult ->
-                                        val id = authResult.user!!.uid
-                                        it.setAccountData(
-                                            id = id,
-                                            onSuccessCallBack = {
-                                                it.setAccountFiles(
-                                                    id = id,
-                                                    onSuccessCallBack = { uri ->
-                                                        UserLocalStorage.setUser(
-                                                            userId = id,
-                                                            firstName = it.firstName,
-                                                            lastName = it.lastName,
-                                                            email = it.email,
-                                                            photo = uri!!
-                                                        )
-                                                        sharedPreferences.edit(){
-                                                            putString("token", it.getAccountToken())
-                                                            apply()
-                                                        }
-                                                        startActivity(Intent(this@AuthenticationActivity, MainActivity::class.java))
-                                                        endLoading()
-                                                    },
-                                                    onFailureCallBack = { exception ->
-                                                        endLoading()
-                                                        FirebaseFireStore.deleteData("user", id, {}, {})
-                                                    }
-                                                )
-                                            },
-                                            onFailureCallBack = { exception ->
-                                                endLoading()
-                                                FirebaseAuthentication.delete({}, {})
-                                            }
-                                        )
-                                        isDialogShown.value = false
-                                    },
-                                    onFailureCallBack = {
-                                        exception ->
-                                        endLoading()
-                                        Toast.makeText(
-                                            this,
-                                            FirebaseAuthentication.exceptionMessage(exception),
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                )
-                            }
+                            startLoading()
 
+                            authenticationBusinessLogic.signUp(
+                                email = email.value,
+                                password = password.value,
+                                firstName = firstName.value,
+                                lastName = lastName.value,
+                                photo = photo.value,
+                                onSuccess = {
+                                    authenticationSuccess()
+                                    endLoading()
+                                },
+                                onFailure = {
+                                    Toast.makeText(this, authenticationBusinessLogic.getExceptionMessage(it), Toast.LENGTH_LONG).show()
+                                    endLoading()
+                                })
                         }
                     )
                 }
@@ -211,92 +205,29 @@ class AuthenticationActivity: ComponentActivity(){
         }
     }
 
-    private fun signIn(onComplete : () -> Unit) {
-        FirebaseAuthentication.EmailAuthenticator.accessAccount({ authResult ->
-
-            if (authResult.user == null)
-                return@accessAccount
-            val currentUser = authResult.user
-
-            FirebaseFireStore.getData(
-                collection = "user",
-                document = currentUser!!.uid,
-                onSuccess = { doc ->
-                    val firstName = doc["first name"] 
-                    val lastName = doc["last name"]
-                    FirebaseCloudStore.getFileUri(
-                        location = "user/${currentUser.uid}/pfp",
-                        onSuccess = { uri ->
-                            try {
-                                UserLocalStorage.setUser(
-                                    currentUser.uid,
-                                    firstName = firstName.toString(),
-                                    lastName = lastName.toString(),
-                                    email = currentUser.email!!,
-                                    photo = uri!!
-                                )
-                                startActivity(Intent(this, MainActivity::class.java))
-                            } catch (e: NullPointerException){
-                                Toast.makeText(this, "Pfp is not set up", Toast.LENGTH_SHORT).show()
-                            }
-                            sharedPreferences.edit(){
-                                putString("token", FirebaseAuthentication.EmailAuthenticator.getAccountToken())
-                                apply()
-                            }
-                            onComplete()
-                            finish()
-
-                        },
-                        onFailure = {
-
-                        }
-                    )
-                },
-                onFailure = {
-                    Log.e(TAG, "signIn: ${it.message}" )
-                    onComplete()
-                },
-            )
-        }, {
-            Toast.makeText(this, FirebaseAuthentication.exceptionMessage(it), Toast.LENGTH_SHORT).show()
-            onComplete()
-        })
-    }
-
-
-
-    private fun initInstences() {
-        googleSignInOptions = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(getString(R.string.google_client_id))
-            .requestEmail()
-            .build()
-        googleSignInClient = GoogleSignIn.getClient(this, googleSignInOptions)
-        sharedPreferences = getSharedPreferences(getString(R.string.user_shared_preferences), Context.MODE_PRIVATE)
-    }
-
-
-    private fun googleAuthentication(){
-        val signInIntent: Intent = googleSignInClient.signInIntent
-        startActivityForResult(signInIntent, GOOGLE_SIGN_IN_REQUEST_CODE)
+    private fun authenticationSuccess() {
+        Intent(this, MainActivity::class.java).also {
+            startActivity(it)
+        }
+        finish()
     }
 
     @Deprecated("Deprecated in Java")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == GOOGLE_SIGN_IN_REQUEST_CODE){
+        if (requestCode == AuthenticationBusinessLogic.GOOGLE_SIGN_IN_REQUEST_CODE){
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)
-            if(task.isSuccessful) {
-                val googleAccount = task.getResult(ApiException::class.java)
-                UserLocalStorage.setUser(
-                    userId = googleAccount.id!!,
-                    firstName = googleAccount.givenName!!,
-                    lastName = googleAccount.familyName!!,
-                    email = googleAccount.email!!,
-                    photo = googleAccount.photoUrl!!
-                )
-                startActivity(Intent(this, MainActivity::class.java))
-            } else {
-                Toast.makeText(this, "TASK UNSC", Toast.LENGTH_SHORT).show()
+            Log.d(AuthenticationBusinessLogic.TAG, "onActivityResult: $task")
+            try {
+                authenticationBusinessLogic.googleAuthenticatorResult(task,
+                    onSuccess = {
+                        authenticationSuccess()
+                    },
+                    onFailure = {
+                        Toast.makeText(this, it.message, Toast.LENGTH_LONG).show()
+                    })
+            } catch (e: Exception) {
+                Toast.makeText(this, authenticationBusinessLogic.getExceptionMessage(e), Toast.LENGTH_LONG).show()
             }
         }
     }

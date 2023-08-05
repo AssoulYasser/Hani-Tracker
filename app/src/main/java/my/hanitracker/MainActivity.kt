@@ -1,7 +1,6 @@
 package my.hanitracker
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -9,13 +8,10 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.annotation.RequiresApi
 import my.hanitracker.manager.PermissionManager.PERMISSION_REQUEST_CODE
 import my.hanitracker.manager.PermissionManager.isPermissionGranted
-import my.hanitracker.manager.PermissionManager.requestPermission
 import my.hanitracker.manager.PermissionManager.requestPermissions
-import my.hanitracker.manager.location.CurrentLocation
-import my.hanitracker.manager.location.LocationService
+import my.hanitracker.location.LocationService
 import my.hanitracker.ui.screens.Main
 import my.hanitracker.ui.theme.HaniTrackerTheme
 
@@ -61,6 +57,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @Deprecated("Deprecated in Java")
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,

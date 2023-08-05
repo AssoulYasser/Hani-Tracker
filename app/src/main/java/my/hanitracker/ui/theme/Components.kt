@@ -1,6 +1,7 @@
 package my.hanitracker.ui.theme
 
 import android.net.Uri
+import android.view.ViewTreeObserver
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -25,12 +26,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import coil.compose.rememberImagePainter
 import coil.transform.CircleCropTransformation
 import my.hanitracker.R
@@ -38,6 +42,28 @@ import my.hanitracker.R
 @Composable
 fun Logo(modifier: Modifier = Modifier) {
     Image(painter = painterResource(id = R.drawable.logo), contentDescription = null, modifier = modifier)
+}
+
+@Composable
+fun rememberImeState(): State<Boolean> {
+    val imeState = remember {
+        mutableStateOf(false)
+    }
+
+    val view = LocalView.current
+    DisposableEffect(view) {
+        val listener = ViewTreeObserver.OnGlobalLayoutListener {
+            val isKeyboardOpen = ViewCompat.getRootWindowInsets(view)
+                ?.isVisible(WindowInsetsCompat.Type.ime()) ?: true
+            imeState.value = isKeyboardOpen
+        }
+
+        view.viewTreeObserver.addOnGlobalLayoutListener(listener)
+        onDispose {
+            view.viewTreeObserver.removeOnGlobalLayoutListener(listener)
+        }
+    }
+    return imeState
 }
 
 @Composable

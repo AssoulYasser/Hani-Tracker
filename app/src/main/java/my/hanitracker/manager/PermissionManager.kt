@@ -79,7 +79,7 @@ object PermissionManager {
     }
 
 
-    fun Activity.savePermissions(permissions: MutableList<String>, isGranted : MutableList<Boolean>) {
+    private fun Activity.savePermissions(permissions: MutableList<String>, isGranted : MutableList<Boolean>) {
         val preferences = getSharedPreferences(getString(R.string.permission_shared_preferences), Context.MODE_PRIVATE)
         with(preferences.edit()){
             for (index in permissions.indices) {
