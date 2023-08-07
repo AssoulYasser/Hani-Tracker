@@ -1,4 +1,4 @@
-package my.hanitracker.manager
+package my.hanitracker.user
 
 import android.net.Uri
 
@@ -16,11 +16,11 @@ object UserLocalStorage {
         private set
 
     fun setUser(userId: String, firstName: String, lastName: String, email: String, photo: Uri){
-        this.userId = userId
-        this.firstName = firstName
-        this.lastName = lastName
-        this.email = email
-        this.photo = photo
+        UserLocalStorage.userId = userId
+        UserLocalStorage.firstName = firstName
+        UserLocalStorage.lastName = lastName
+        UserLocalStorage.email = email
+        UserLocalStorage.photo = photo
     }
 
 }

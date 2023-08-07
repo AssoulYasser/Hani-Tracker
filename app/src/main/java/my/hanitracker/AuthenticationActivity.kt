@@ -139,6 +139,7 @@ class AuthenticationActivity: ComponentActivity(){
                                                     Toast.makeText(
                                                         this,"Email has already been used", Toast.LENGTH_LONG).show()
                                                     emailOnError.value = true
+                                                    endLoading()
                                                 }
 
                                                 AuthenticationBusinessLogic.ACCOUNT_RELATED_WITH_GOOGLE_AUTHENTICATOR -> {
@@ -206,7 +207,7 @@ class AuthenticationActivity: ComponentActivity(){
     }
 
     private fun authenticationSuccess() {
-        Intent(this, MainActivity::class.java).also {
+        Intent(this, MapActivity::class.java).also {
             startActivity(it)
         }
         finish()

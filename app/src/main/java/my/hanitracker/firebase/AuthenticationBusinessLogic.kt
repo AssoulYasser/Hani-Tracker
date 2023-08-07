@@ -3,13 +3,14 @@ package my.hanitracker.firebase
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.tasks.Task
 import my.hanitracker.R
-import my.hanitracker.manager.UserLocalStorage
+import my.hanitracker.user.UserLocalStorage
 
 class AuthenticationBusinessLogic(private val activity: Activity) {
 
@@ -97,6 +98,7 @@ class AuthenticationBusinessLogic(private val activity: Activity) {
     }
 
     fun signIn(email: String, password: String, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
+        Log.d(TAG, "signIn: START")
         firebaseAuthentication.accessAccount(
             email = email,
             password = password,

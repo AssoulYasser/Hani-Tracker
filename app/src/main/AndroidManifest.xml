@@ -22,7 +22,7 @@
         <service android:name=".location.LocationService" android:foregroundServiceType="location" />
         <receiver android:name=".location.LocationBroadCast" />
         <activity
-            android:name=".MainActivity"
+            android:name=".MapActivity"
             android:exported="true"
             android:theme="@style/Theme.HaniTracker">
 

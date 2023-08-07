@@ -38,31 +38,12 @@ class FirebaseRealtimeStore {
     }
 
 
-    fun trackData(path: String, onAdd : (DataSnapshot) -> Unit, onChange : (DataSnapshot) -> Unit, onDelete : (DataSnapshot) -> Unit) {
-        firebaseRealtimeStore.child(path).addChildEventListener(
-            object : ChildEventListener {
-                override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                    onAdd(snapshot)
-                }
+    fun addDataEventListener(path: String, childEventListener: ChildEventListener ) =
+        firebaseRealtimeStore.child(path).addChildEventListener(childEventListener)
 
-                override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                    onChange(snapshot)
-                }
-
-                override fun onChildRemoved(snapshot: DataSnapshot) {
-                    onDelete(snapshot)
-                }
-
-                override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
-                    TODO("Not yet implemented")
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    TODO("Not yet implemented")
-                }
-
-            }
-        )
+    fun deleteDataEventListener(path: String, childEventListener: ChildEventListener) {
+        firebaseRealtimeStore.child(path).removeEventListener(childEventListener)
     }
+
 
 }

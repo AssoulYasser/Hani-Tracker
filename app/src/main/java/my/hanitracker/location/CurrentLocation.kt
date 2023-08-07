@@ -3,7 +3,7 @@ package my.hanitracker.location
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import my.hanitracker.firebase.FirebaseRealtimeStore
-import my.hanitracker.manager.UserLocalStorage
+import my.hanitracker.user.UserLocalStorage
 
 object CurrentLocation {
 

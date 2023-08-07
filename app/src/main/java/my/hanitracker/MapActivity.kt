@@ -8,24 +8,44 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import my.hanitracker.manager.PermissionManager.PERMISSION_REQUEST_CODE
 import my.hanitracker.manager.PermissionManager.isPermissionGranted
 import my.hanitracker.manager.PermissionManager.requestPermissions
 import my.hanitracker.location.LocationService
+import my.hanitracker.map.MapBusinessLogic
 import my.hanitracker.ui.screens.Main
+import my.hanitracker.ui.theme.CircularProgress
 import my.hanitracker.ui.theme.HaniTrackerTheme
 
-class MainActivity : ComponentActivity() {
+class MapActivity : ComponentActivity() {
+    private lateinit var mapBusinessLogic: MapBusinessLogic
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            val isLoading = remember { mutableStateOf(false) }
+
+            fun startLoading() {
+                isLoading.value = true
+            }
+
+            fun stopLoading() {
+                isLoading.value = false
+            }
+
             HaniTrackerTheme {
+                startLoading()
                 Main(
                     startTracking = { startTracking() },
                     stopTracking = { stopTracking() }
-                )
+                ) { mapView ->
+                    mapBusinessLogic = MapBusinessLogic(this, mapView)
+                    isLoading.value = false
+                }
             }
+            CircularProgress(isLoading = isLoading)
         }
     }
 
@@ -42,11 +62,13 @@ class MainActivity : ComponentActivity() {
 
         if(permissionList.isNotEmpty())
             this.requestPermissions(permissionList)
-        else
+        else {
             Intent(applicationContext, LocationService::class.java).apply {
                 action = LocationService.START
                 startService(this)
             }
+            mapBusinessLogic.startTracking()
+        }
 
     }
 
@@ -55,6 +77,7 @@ class MainActivity : ComponentActivity() {
             action = LocationService.STOP
             startService(this)
         }
+        mapBusinessLogic.stopTracking()
     }
 
     @Deprecated("Deprecated in Java")
