@@ -1,92 +1,82 @@
 package my.hanitracker.manager
 
+import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
-import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.provider.Settings
 import android.util.Log
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.ComposeView
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.core.content.ContextCompat
-import my.hanitracker.R
 
-object PermissionManager {
+class PermissionManager(private val activity: Activity) {
 
-    const val PERMISSION_REQUEST_CODE = 300
-    private const val TAG = "DEBUGGING : "
+    fun isPermissionGranted(permission: String) : Boolean = ContextCompat.checkSelfPermission(activity, permission) == PackageManager.PERMISSION_GRANTED
 
-    fun Context.isPermissionGranted(permission: String) : Boolean =
-        ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
-
-
-    fun Activity.requestPermission(
-        permission: String
-    ) {
-        this.requestPermissions(
-            permissions = mutableListOf(permission)
-        )
+    private fun getPermissionRequestCode(permission: String) : Int{
+        return when(permission){
+            Manifest.permission.POST_NOTIFICATIONS -> 1
+            Manifest.permission.ACCESS_COARSE_LOCATION -> 2
+            Manifest.permission.ACCESS_FINE_LOCATION -> 3
+            else -> -1
+        }
     }
 
-    fun Activity.requestPermissions(
-        permissions: MutableList<String>
-    ) {
-        Log.d(TAG, "requestPermissions: START")
-        val preferences = getSharedPreferences(getString(R.string.permission_shared_preferences), Context.MODE_PRIVATE)
-        val permissionsToRequest = mutableListOf<String>()
-        val permissionsToRedirect = mutableListOf<String>()
+    private fun getPermissionRequestCode(permissions: Array<String>) : Array<Int>{
+        val result = arrayOf<Int>()
         for (permission in permissions){
-            if (preferences.contains(permission)) {
-                if (preferences.getBoolean(permission, false))
-                    permissionsToRedirect.add(permission)
-            }
-            else
-                permissionsToRequest.add(permission)
+            result.plus(getPermissionRequestCode(permission))
         }
-        if (permissionsToRequest.isNotEmpty())
-            ActivityCompat.requestPermissions(this, permissionsToRequest.toTypedArray(), PERMISSION_REQUEST_CODE)
-        if (permissionsToRedirect.isNotEmpty())
-            requestPermissionsIntent(permissionsToRedirect)
-        Log.d(TAG, "requestPermissions: END")
+        return result
     }
 
-    private fun Activity.requestPermissionsIntent(permissionsToRedirect: MutableList<String>) {
-        Log.d(TAG, "requestPermissionsIntent: START")
-        AlertDialog.Builder(this)
-            .setTitle("PERMISSION NEEDED")
-            .setView(
-                ComposeView(
-                    context = this,
-                    attrs = null,
-                    defStyleAttr = 0
-                ).apply {
-                    setContent {
-                        MaterialTheme {
-                            Text(text = "COMP TEXT")
-                        }
-                    }
+    fun requestPermission(permission: String) {
+        ActivityCompat.requestPermissions(activity, arrayOf(permission), getPermissionRequestCode(permission))
+    }
+
+    fun requestPermission(permissions: Array<String>){
+        ActivityCompat.requestPermissions(activity, permissions, 0)
+    }
+
+    fun onPermissionResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        if (requestCode == 0) {
+            for (index in permissions.indices)
+                if (grantResults[index] != PackageManager.PERMISSION_GRANTED) {
+                    permissionRequestDialog()
+                    break
                 }
-            )
-    }
-
-    fun Activity.savePermission(permission: String, isGranted : Boolean) {
-        this.savePermissions(mutableListOf(permission), mutableListOf(isGranted))
-    }
-
-
-    private fun Activity.savePermissions(permissions: MutableList<String>, isGranted : MutableList<Boolean>) {
-        val preferences = getSharedPreferences(getString(R.string.permission_shared_preferences), Context.MODE_PRIVATE)
-        with(preferences.edit()){
-            for (index in permissions.indices) {
-                putBoolean(permissions[index], isGranted[index])
-                apply()
-            }
+        }
+        else {
+            val grantResult = grantResults[0]
+            if (grantResult != PackageManager.PERMISSION_GRANTED)
+                permissionRequestDialog()
         }
     }
+
+    private fun permissionRequestDialog() {
+        AlertDialog.Builder(activity)
+            .setTitle("Permissions required")
+            .setMessage("some permissions are required, please grant us to access it")
+            .setPositiveButton(
+                "GRANT ACCESS"
+            ) { dialogInterface, _ ->
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                intent.data = android.net.Uri.parse("package:" + activity.packageName)
+                activity.startActivity(intent)
+                dialogInterface.dismiss()
+            }
+            .setNegativeButton(
+                "DENY ACCESS"
+            ) { dialogInterface, _ ->
+                dialogInterface.dismiss()
+            }
+            .show()
+    }
+
 
 }

@@ -1,0 +1,2 @@
+1. Google Auth is not showing point annotation
+2. When Gps is disabled you still can see others, the solution is to create another coroutine that checks from network and gps independetly

@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
 import android.os.IBinder
 import android.provider.Settings
 import android.util.Log
@@ -18,12 +19,14 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import my.hanitracker.R
+import my.hanitracker.firebase.LocationTrackingBusinessLogic
 
 class LocationService : Service() {
 
     private val service = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var locationTracker: LocationTracker
     private lateinit var notificationManager: NotificationManager
+    private lateinit var locationTrackingBusinessLogic: LocationTrackingBusinessLogic
     private val TAG = "DEBUGGING : "
 
     override fun onBind(p0: Intent?): IBinder? {
@@ -36,6 +39,7 @@ class LocationService : Service() {
             applicationContext,
             LocationServices.getFusedLocationProviderClient(applicationContext)
         )
+        locationTrackingBusinessLogic = LocationTrackingBusinessLogic()
         notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     }
 
@@ -46,6 +50,24 @@ class LocationService : Service() {
             ENABLE_GPS -> enableGps()
         }
         return super.onStartCommand(intent, flags, startId)
+    }
+
+    private fun enableNetwork() {
+        val closeServiceIntent = Intent(this, LocationBroadCast::class.java).apply {
+            action = STOP
+        }
+        val closeServicePendingIntent = PendingIntent.getBroadcast(this, 0, closeServiceIntent, PendingIntent.FLAG_IMMUTABLE)
+
+        val notification = NotificationCompat.Builder(this, getString(R.string.error_notification))
+            .setContentTitle("No network provided")
+            .setContentText("trying to reconnect ... ")
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .addAction(R.drawable.baseline_close_24, "Stop tracking", closeServicePendingIntent)
+            .setOngoing(true)
+            .build()
+        notificationManager.notify(resources.getInteger(R.integer.location_update), notification)
+
+
     }
 
     private fun enableGps() {
@@ -73,9 +95,13 @@ class LocationService : Service() {
 
     private fun startCoroutine() {
 
+        val connectivityManager = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        var isNetworkProvided = true
+
         val closeServiceIntent = Intent(this, LocationBroadCast::class.java).apply {
             action = STOP
         }
+
         val closeServicePendingIntent = PendingIntent.getBroadcast(this, 0, closeServiceIntent, PendingIntent.FLAG_IMMUTABLE)
 
         val notification = NotificationCompat.Builder(this, getString(R.string.location_tracking_notification))
@@ -85,22 +111,33 @@ class LocationService : Service() {
             .addAction(R.drawable.baseline_close_24, "Stop tracking", closeServicePendingIntent)
             .setOngoing(true)
 
-        locationTracker.checkHardwareAvailability(1000L)
+        locationTracker.checkGpsProvider(1000L)
 
         locationTracker
             .getLocationUpdate(1000L)
             .catch { e -> Log.d(TAG, "startCoroutine getLocationUpdate Exception: ${e.printStackTrace()}") }
             .onEach { location ->
-                if (!locationTracker.isCheckingTheHardware) {
-                    locationTracker.checkHardwareAvailability(1000L)
-                    locationTracker.isCheckingTheHardware = true
+                if (connectivityManager.activeNetworkInfo?.isConnectedOrConnecting == true) {
+                    isNetworkProvided = true
+                    val latitude = location.latitude
+                    val longitude = location.longitude
+                    locationTrackingBusinessLogic.updateLocationInCloud(latitude, longitude)
+                    val updateNotification =
+                        notification.setContentText("Location: ($latitude , $longitude)")
+                    notificationManager.notify(
+                        resources.getInteger(R.integer.location_update),
+                        updateNotification.build()
+                    )
                 }
-                CurrentLocation.isTracking.value = true
-                val latitude = location.latitude
-                val longitude = location.longitude
-                CurrentLocation.setLocation(latitude, longitude)
-                val updateNotification = notification.setContentText("Location: ($latitude , $longitude)")
-                notificationManager.notify(resources.getInteger(R.integer.location_update), updateNotification.build())
+                else {
+                    if (isNetworkProvided){
+                        isNetworkProvided = false
+                        enableNetwork()
+                    }
+
+                }
+
+
             }
             .launchIn(service)
 
@@ -110,8 +147,7 @@ class LocationService : Service() {
     }
 
     private fun stopCoroutine() {
-        CurrentLocation.stopStreamingLocation()
-        CurrentLocation.isTracking.value = false
+        locationTrackingBusinessLogic.deleteLocationFromCloud()
         stopForeground(true)
         stopSelf()
     }
@@ -125,7 +161,6 @@ class LocationService : Service() {
         const val START = "START"
         const val STOP = "STOP"
         const val ENABLE_GPS = "ENABLE_GPS"
-        const val ENABLE_NETWORK = "ENABLE_NETWORK"
     }
 
 

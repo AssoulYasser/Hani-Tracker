@@ -14,9 +14,9 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import kotlin.math.ceil
 
-class BitmapManager {
+class BitmapManager(val context: Context) {
 
-    fun uriToBitmap(context: Context, uri: Uri, callback: (Bitmap?) -> Unit) {
+    fun uriToBitmap(uri: Uri, callback: (Bitmap?) -> Unit) {
         Glide.with(context)
             .asBitmap()
             .load(uri)
@@ -33,7 +33,7 @@ class BitmapManager {
     }
 
 
-    fun createCircularBitmapWithImage(context: Context, bitmap: Bitmap, borderWidth: Float, borderColor: Int): Bitmap? {
+    fun createCircularBitmapWithImage(bitmap: Bitmap, borderWidth: Float, borderColor: Int): Bitmap? {
         val width = bitmap.width
         val height = bitmap.height
         ceil(borderWidth).toInt()

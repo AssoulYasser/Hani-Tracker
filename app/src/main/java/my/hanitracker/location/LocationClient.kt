@@ -7,7 +7,7 @@ interface LocationClient {
 
     fun getLocationUpdate(interval: Long) : Flow<Location>
 
-    fun checkHardwareAvailability(interval: Long)
+    fun checkGpsProvider(interval: Long)
 
     class LocationException(message: String) : Exception()
 

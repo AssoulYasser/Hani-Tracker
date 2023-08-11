@@ -1,12 +1,14 @@
 package my.hanitracker.firebase
 
 import android.net.Uri
+import android.util.Log
 import com.google.firebase.database.ChildEventListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.firestore.QueryDocumentSnapshot
-import my.hanitracker.location.UserLocationDataClass
+import my.hanitracker.location.UserGeoLocationDataClass
 import my.hanitracker.user.UserDataClass
+import my.hanitracker.user.UserLocalStorage
 
 class LocationTrackingBusinessLogic {
     private val firebaseRealtimeStore = FirebaseRealtimeStore()
@@ -14,7 +16,7 @@ class LocationTrackingBusinessLogic {
     private lateinit var locationEventListener: ChildEventListener
 
     fun startTrackLocation(
-        onAdd: (UserLocationDataClass) -> Unit,
+        onAdd: (UserGeoLocationDataClass) -> Unit,
         onChange: (uid: String, latitude: Double, longitude: Double) -> Unit,
         onDelete: (uid: String) -> Unit,
         onFailure: (Exception) -> Unit
@@ -32,7 +34,7 @@ class LocationTrackingBusinessLogic {
                         onSuccess = { querySnapshot ->
                             querySnapshot.forEach {
                                 val user = getUserData(it)
-                                val userLocation = UserLocationDataClass(user = user, latitude = location["latitude"] as Double, longitude = location["longitude"] as Double)
+                                val userLocation = UserGeoLocationDataClass(user = user, latitude = location["latitude"] as Double, longitude = location["longitude"] as Double)
                                 onAdd(userLocation)
                             }
                         },
@@ -74,6 +76,24 @@ class LocationTrackingBusinessLogic {
         val uid = documentSnapshot["uid"] as String
         val pfpUri = Uri.parse(documentSnapshot["profile picture uri"] as String)
         return UserDataClass(uid = uid, firstName = firstName, lastName = lastName, email = email, pfp = pfpUri)
+    }
+
+    fun updateLocationInCloud(latitude: Double, longitude: Double) {
+        firebaseRealtimeStore.storeData(
+            data = hashMapOf("latitude" to latitude, "longitude" to longitude),
+            path = "location/${UserLocalStorage.userId}",
+            onSuccess = {},
+            onFailure = {}
+        )
+    }
+
+    fun deleteLocationFromCloud() {
+        firebaseRealtimeStore.storeData(
+            data = null,
+            path = "location/${UserLocalStorage.userId}",
+            onSuccess = { Log.d("DEBUGGING : ", "streamLocation: SUCCESS") },
+            onFailure = { Log.d("DEBUGGING : ", "streamLocation: FAIL") }
+        )
     }
 
 }

@@ -2,30 +2,33 @@ package my.hanitracker
 
 import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.widget.Toast
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import my.hanitracker.manager.PermissionManager.PERMISSION_REQUEST_CODE
-import my.hanitracker.manager.PermissionManager.isPermissionGranted
-import my.hanitracker.manager.PermissionManager.requestPermissions
 import my.hanitracker.location.LocationService
+import my.hanitracker.location.UserPlaceNameLocationDataClass
+import my.hanitracker.manager.PermissionManager
 import my.hanitracker.map.MapBusinessLogic
-import my.hanitracker.ui.screens.Main
+import my.hanitracker.ui.screens.MapScreen
 import my.hanitracker.ui.theme.CircularProgress
 import my.hanitracker.ui.theme.HaniTrackerTheme
 
 class MapActivity : ComponentActivity() {
     private lateinit var mapBusinessLogic: MapBusinessLogic
+    private lateinit var permissionManager: PermissionManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        permissionManager = PermissionManager(this)
+        checkNotificationPermission()
+
         setContent {
             val isLoading = remember { mutableStateOf(false) }
+            val isTracking = remember { mutableStateOf(false) }
 
             fun startLoading() {
                 isLoading.value = true
@@ -35,40 +38,63 @@ class MapActivity : ComponentActivity() {
                 isLoading.value = false
             }
 
+            CircularProgress(isLoading = isLoading)
             HaniTrackerTheme {
                 startLoading()
-                Main(
+                MapScreen(
                     startTracking = { startTracking() },
-                    stopTracking = { stopTracking() }
+                    stopTracking = { stopTracking() },
+                    onCenterCameraPosition = { centerCameraPosition() },
+                    onListingOnlinePeople = { listOnlinePeople() },
                 ) { mapView ->
+                    Log.d("DEBUGGING : ", "onCreate: BEFORE HAVING BITMAP EXCEPTION")
                     mapBusinessLogic = MapBusinessLogic(this, mapView)
                     isLoading.value = false
                 }
             }
-            CircularProgress(isLoading = isLoading)
         }
     }
 
+    private fun listOnlinePeople() : MutableList<UserPlaceNameLocationDataClass> {
+        return mapBusinessLogic.getActiveUsersPlaces()
+    }
 
-    private fun startTracking() {
-        val permissionList = mutableListOf<String>()
+    private fun centerCameraPosition() {
+        mapBusinessLogic.adjustCameraPosition()
+    }
 
-        if(!this.isPermissionGranted(Manifest.permission.ACCESS_COARSE_LOCATION))
-            permissionList.add(Manifest.permission.ACCESS_COARSE_LOCATION)
-        if(!this.isPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION))
-            permissionList.add(Manifest.permission.ACCESS_FINE_LOCATION)
-        if(!this.isPermissionGranted(Manifest.permission.POST_NOTIFICATIONS) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-            permissionList.add(Manifest.permission.POST_NOTIFICATIONS)
+    private fun checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)
+            return
 
-        if(permissionList.isNotEmpty())
-            this.requestPermissions(permissionList)
-        else {
-            Intent(applicationContext, LocationService::class.java).apply {
-                action = LocationService.START
-                startService(this)
-            }
-            mapBusinessLogic.startTracking()
+        val notificationPermission = Manifest.permission.POST_NOTIFICATIONS
+        if (permissionManager.isPermissionGranted(notificationPermission))
+            return
+
+        permissionManager.requestPermission(notificationPermission)
+    }
+
+    private fun isLocationPermissionGranted() : Boolean {
+        if (!permissionManager.isPermissionGranted(Manifest.permission.ACCESS_COARSE_LOCATION))
+            return false
+        if (!permissionManager.isPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION))
+            return false
+        return true
+    }
+
+    private fun startTracking() : Boolean {
+        if (!isLocationPermissionGranted()) {
+            permissionManager.requestPermission(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION))
+            return false
         }
+
+        Intent(applicationContext, LocationService::class.java).apply {
+            action = LocationService.START
+            startService(this)
+        }
+        mapBusinessLogic.startTracking()
+
+        return true
 
     }
 
@@ -80,36 +106,18 @@ class MapActivity : ComponentActivity() {
         mapBusinessLogic.stopTracking()
     }
 
-    @Deprecated("Deprecated in Java")
+    @Deprecated("Deprecated in Java", ReplaceWith(
+        "super.onRequestPermissionsResult(requestCode, permissions, grantResults)",
+        "androidx.activity.ComponentActivity"
+        )
+    )
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        when(requestCode) {
-            PERMISSION_REQUEST_CODE -> {
-
-                for (index in permissions.indices) {
-                    if (grantResults[index] == PackageManager.PERMISSION_GRANTED) {
-                        Toast.makeText(
-                            this,
-                            "${permissions[index]} has been granted",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                    else
-                        Toast.makeText(
-                            this,
-                            "${permissions[index]} has not granted",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                }
-            }
-            else -> throw Exception("UNKNOWN PERMISSION REQUEST CODE FOUND")
-        }
+        permissionManager.onPermissionResult(requestCode, permissions, grantResults)
     }
-
-
 
 }

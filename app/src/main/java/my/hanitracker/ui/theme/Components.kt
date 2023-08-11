@@ -144,20 +144,3 @@ fun CircularProgress(isLoading : MutableState<Boolean>) {
 
     }
 }
-
-@Composable
-fun ImageLoading(imageUri : Uri?, modifier : Modifier = Modifier) {
-    val painter = rememberImagePainter(
-        data = imageUri,
-        builder = {
-            placeholder(R.drawable.profile_circle)
-            crossfade(200)
-            transformations(
-                CircleCropTransformation()
-            )
-        }
-    )
-
-    Image(painter = painter, contentDescription = null, modifier = modifier)
-
-}

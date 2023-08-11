@@ -1,6 +1,9 @@
 package my.hanitracker
 
+import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -22,10 +25,12 @@ import my.hanitracker.ui.theme.HaniTrackerTheme
 
 class AuthenticationActivity: ComponentActivity(){
     private lateinit var authenticationBusinessLogic : AuthenticationBusinessLogic
+    private lateinit var connectivityManager : ConnectivityManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         authenticationBusinessLogic = AuthenticationBusinessLogic(this)
+        connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
         setContent {
             val isSigned = remember { mutableStateOf(true) }
@@ -93,111 +98,140 @@ class AuthenticationActivity: ComponentActivity(){
                         },
                         onRegister = {
                             startLoading()
-                            try {
-                                authenticationBusinessLogic.checkEmailAndPassword(email.value, password.value)
-
-                                if (isSigned.value)
-                                    authenticationBusinessLogic.checkAccountExistence(
-                                        email = email.value,
-                                        onSuccess = { accountExistence ->
-                                            when(accountExistence){
-                                                AuthenticationBusinessLogic.ACCOUNT_RELATED_WITH_GOOGLE_AUTHENTICATOR -> {
-                                                    Toast.makeText(this, "This email is used with Google Authenticator", Toast.LENGTH_LONG).show()
-                                                    authenticationBusinessLogic.googleSignInIntent()
-                                                }
-                                                AuthenticationBusinessLogic.ACCOUNT_RELATED_WITH_EMAIL_AND_PASSWORD -> {
-                                                    authenticationBusinessLogic.signIn(
-                                                        email = email.value,
-                                                        password = password.value,
-                                                        onSuccess = {
-                                                            endLoading()
-                                                            authenticationSuccess()
-                                                        },
-                                                        onFailure = {
-                                                            endLoading()
-                                                            Toast.makeText(this, authenticationBusinessLogic.getExceptionMessage(it), Toast.LENGTH_LONG).show()
-                                                        })
-                                                }
-                                                else -> {
-                                                    Toast.makeText(this, "Invalid account detected", Toast.LENGTH_LONG).show()
-                                                    emailOnError.value = true
-                                                }
-                                            }
-                                        },
-                                        onFailure = {
-                                            Toast.makeText(this, authenticationBusinessLogic.getExceptionMessage(it), Toast.LENGTH_LONG).show()
-                                            endLoading()
-                                        }
-                                    )
-
-                                else
-                                    authenticationBusinessLogic.checkAccountExistence(
-                                        email.value,
-                                        onSuccess = { accountExistence ->
-                                            when(accountExistence) {
-                                                AuthenticationBusinessLogic.ACCOUNT_RELATED_WITH_EMAIL_AND_PASSWORD -> {
-                                                    Toast.makeText(
-                                                        this,"Email has already been used", Toast.LENGTH_LONG).show()
-                                                    emailOnError.value = true
-                                                    endLoading()
-                                                }
-
-                                                AuthenticationBusinessLogic.ACCOUNT_RELATED_WITH_GOOGLE_AUTHENTICATOR -> {
-                                                    Toast.makeText(this, "This email is used with Google Authenticator", Toast.LENGTH_LONG).show()
-                                                    authenticationBusinessLogic.googleSignInIntent()
-                                                    emailOnError.value = true
-                                                }
-
-                                                else -> {
-                                                    isDialogShown.value = true
-                                                    endLoading()
-                                                }
-                                            }
-
-                                        },
-                                        onFailure = {
-                                            Toast.makeText(this, it.message, Toast.LENGTH_LONG).show()
-                                        }
-                                    )
-
-
-                            } catch (e : Exception) {
-                                Toast.makeText(this, e.message, Toast.LENGTH_LONG).show()
-                                when(e.message){
-                                    AuthenticationBusinessLogic.EMAIL_VALIDATION_EXCEPTION_MESSAGE -> emailOnError.value = true
-                                    AuthenticationBusinessLogic.PASSWORD_VALIDATION_EXCEPTION_MESSAGE -> passwordOnError.value = true
-                                    AuthenticationBusinessLogic.FIRST_NAME_VALIDATION_EXCEPTION_MESSAGE -> firstNameOnError.value = true
-                                    AuthenticationBusinessLogic.LAST_NAME_VALIDATION_EXCEPTION_MESSAGE -> lastNameOnError.value = true
-                                }
+                            if (connectivityManager.activeNetworkInfo?.isConnectedOrConnecting != true) {
+                                AlertDialog.Builder(this)
+                                    .setTitle("No network provided")
+                                    .setMessage("your device is not connected to any network provider")
+                                    .setNegativeButton("CLOSE") { dialogInterface, _ ->
+                                        dialogInterface.dismiss()
+                                    }
+                                    .show()
                                 endLoading()
                             }
+                            else
+                                try {
+                                    authenticationBusinessLogic.checkEmailAndPassword(email.value, password.value)
+
+                                    if (isSigned.value)
+                                        authenticationBusinessLogic.checkAccountExistence(
+                                            email = email.value,
+                                            onSuccess = { accountExistence ->
+                                                when(accountExistence){
+                                                    AuthenticationBusinessLogic.ACCOUNT_RELATED_WITH_GOOGLE_AUTHENTICATOR -> {
+                                                        Toast.makeText(this, "This email is used with Google Authenticator", Toast.LENGTH_LONG).show()
+                                                        authenticationBusinessLogic.googleSignInIntent()
+                                                    }
+                                                    AuthenticationBusinessLogic.ACCOUNT_RELATED_WITH_EMAIL_AND_PASSWORD -> {
+                                                        authenticationBusinessLogic.signIn(
+                                                            email = email.value,
+                                                            password = password.value,
+                                                            onSuccess = {
+                                                                endLoading()
+                                                                authenticationSuccess()
+                                                            },
+                                                            onFailure = {
+                                                                endLoading()
+                                                                Toast.makeText(this, authenticationBusinessLogic.getExceptionMessage(it), Toast.LENGTH_LONG).show()
+                                                            })
+                                                    }
+                                                    else -> {
+                                                        Toast.makeText(this, "Invalid account detected", Toast.LENGTH_LONG).show()
+                                                        emailOnError.value = true
+                                                    }
+                                                }
+                                            },
+                                            onFailure = {
+                                                Toast.makeText(this, authenticationBusinessLogic.getExceptionMessage(it), Toast.LENGTH_LONG).show()
+                                                endLoading()
+                                            }
+                                        )
+
+                                    else
+                                        authenticationBusinessLogic.checkAccountExistence(
+                                            email.value,
+                                            onSuccess = { accountExistence ->
+                                                when(accountExistence) {
+                                                    AuthenticationBusinessLogic.ACCOUNT_RELATED_WITH_EMAIL_AND_PASSWORD -> {
+                                                        Toast.makeText(
+                                                            this,"Email has already been used", Toast.LENGTH_LONG).show()
+                                                        emailOnError.value = true
+                                                        endLoading()
+                                                    }
+
+                                                    AuthenticationBusinessLogic.ACCOUNT_RELATED_WITH_GOOGLE_AUTHENTICATOR -> {
+                                                        Toast.makeText(this, "This email is used with Google Authenticator", Toast.LENGTH_LONG).show()
+                                                        authenticationBusinessLogic.googleSignInIntent()
+                                                        emailOnError.value = true
+                                                    }
+
+                                                    else -> {
+                                                        isDialogShown.value = true
+                                                        endLoading()
+                                                    }
+                                                }
+
+                                            },
+                                            onFailure = {
+                                                Toast.makeText(this, it.message, Toast.LENGTH_LONG).show()
+                                            }
+                                        )
+
+
+                                } catch (e : Exception) {
+                                    Toast.makeText(this, e.message, Toast.LENGTH_LONG).show()
+                                    when(e.message){
+                                        AuthenticationBusinessLogic.EMAIL_VALIDATION_EXCEPTION_MESSAGE -> emailOnError.value = true
+                                        AuthenticationBusinessLogic.PASSWORD_VALIDATION_EXCEPTION_MESSAGE -> passwordOnError.value = true
+                                        AuthenticationBusinessLogic.FIRST_NAME_VALIDATION_EXCEPTION_MESSAGE -> firstNameOnError.value = true
+                                        AuthenticationBusinessLogic.LAST_NAME_VALIDATION_EXCEPTION_MESSAGE -> lastNameOnError.value = true
+                                    }
+                                    endLoading()
+                                }
 
 
 
                         },
                         onSubmit = {
-                            try {
-                                authenticationBusinessLogic.checkOtherFields(firstName.value, lastName.value, photo.value)
-                            } catch (e: Exception){
-                                Toast.makeText(this, e.message, Toast.LENGTH_LONG).show()
+                            if (connectivityManager.activeNetworkInfo?.isConnectedOrConnecting != true)
+                                AlertDialog.Builder(this)
+                                    .setTitle("No network provided")
+                                    .setMessage("your device is not connected to any network provider")
+                                    .setNegativeButton("CLOSE") { dialogInterface, _ ->
+                                        dialogInterface.dismiss()
+                                    }
+                                    .show()
+                            else {
+                                try {
+                                    authenticationBusinessLogic.checkOtherFields(
+                                        firstName.value,
+                                        lastName.value,
+                                        photo.value
+                                    )
+                                } catch (e: Exception) {
+                                    Toast.makeText(this, e.message, Toast.LENGTH_LONG).show()
+                                }
+
+                                startLoading()
+// DATA CLASS USER
+                                authenticationBusinessLogic.signUp(
+                                    email = email.value,
+                                    password = password.value,
+                                    firstName = firstName.value,
+                                    lastName = lastName.value,
+                                    photo = photo.value,
+                                    onSuccess = {
+                                        authenticationSuccess()
+                                        endLoading()
+                                    },
+                                    onFailure = {
+                                        Toast.makeText(
+                                            this,
+                                            authenticationBusinessLogic.getExceptionMessage(it),
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                        endLoading()
+                                    })
                             }
-
-                            startLoading()
-
-                            authenticationBusinessLogic.signUp(
-                                email = email.value,
-                                password = password.value,
-                                firstName = firstName.value,
-                                lastName = lastName.value,
-                                photo = photo.value,
-                                onSuccess = {
-                                    authenticationSuccess()
-                                    endLoading()
-                                },
-                                onFailure = {
-                                    Toast.makeText(this, authenticationBusinessLogic.getExceptionMessage(it), Toast.LENGTH_LONG).show()
-                                    endLoading()
-                                })
                         }
                     )
                 }
