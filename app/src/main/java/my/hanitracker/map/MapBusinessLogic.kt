@@ -1,5 +1,6 @@
 package my.hanitracker.map
 
+import android.app.Activity
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -7,6 +8,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import com.mapbox.maps.MapView
 import com.mapbox.maps.plugin.annotation.generated.PointAnnotation
 import my.hanitracker.firebase.LocationTrackingBusinessLogic
@@ -15,20 +17,28 @@ import my.hanitracker.location.UserPlaceNameLocationDataClass
 import my.hanitracker.manager.BitmapManager
 import my.hanitracker.user.UserLocalStorage
 
-class MapBusinessLogic(val context: Context, mapView: MapView) {
+class MapBusinessLogic(private val activity: Activity, mapView: MapView) {
     private var mapBoxManager: MapBoxManager
     private val locationTrackingBusinessLogic: LocationTrackingBusinessLogic
     private val bitmapManager: BitmapManager
     private val locations = mutableStateMapOf<String, PointAnnotation>()
-    private val users = mutableListOf<UserPlaceNameLocationDataClass>()
+    private val context: Context
 
     init {
         mapBoxManager = MapBoxManager(mapView)
         locationTrackingBusinessLogic = LocationTrackingBusinessLogic()
-        bitmapManager = BitmapManager(context)
+        bitmapManager = BitmapManager(activity.applicationContext)
+        context = activity.applicationContext
     }
 
-    private fun Bitmap.setAnnotationBitmap(context: Context) : Bitmap? = bitmapManager.createCircularBitmapWithImage(this, 10.0f, Color.BLACK)
+    companion object{
+        var isTracking = mutableStateOf(false)
+        var isGpsProvided = mutableStateOf(true)
+        var isConnectivityProvided = mutableStateOf(true)
+        val users = mutableStateListOf<UserPlaceNameLocationDataClass>()
+    }
+
+    private fun Bitmap.setAnnotationBitmap(): Bitmap? = bitmapManager.createCircularBitmapWithImage(this, 10.0f, Color.BLACK)
 
     private fun addLocation(userLocation: UserGeoLocationDataClass){
         mapBoxManager.getPlaceName(
@@ -47,7 +57,7 @@ class MapBusinessLogic(val context: Context, mapView: MapView) {
             callback = { pfpBitmap ->
                 Log.d("DEBUGGING : ", "addLocation: INSIDE BITMAP AND I GUESS BEFORE EXCPETION")
                 val pointAnnotationImage =
-                    pfpBitmap?.setAnnotationBitmap(context = context) ?: return@uriToBitmap
+                    pfpBitmap?.setAnnotationBitmap() ?: return@uriToBitmap
                 val pointAnnotationOption = mapBoxManager.createPointAnnotationOption(
                     latitude = userLocation.latitude,
                     longitude = userLocation.longitude,
@@ -126,15 +136,6 @@ class MapBusinessLogic(val context: Context, mapView: MapView) {
         val latitude = userGeometry.geometry.latitude()
         val longitude = userGeometry.geometry.longitude()
         mapBoxManager.adjustCameraPosition(20.0, latitude, longitude)
-    }
-
-    fun getActiveUsersPlaces() : MutableList<UserPlaceNameLocationDataClass> {
-        users.forEach {
-            Log.d("DEBUGGING : ", "getActiveUsersPlaces: ${it.placeName}")
-        }
-
-        return users
-
     }
 
     fun onException() {

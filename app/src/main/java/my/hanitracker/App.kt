@@ -20,12 +20,6 @@ class App: Application() {
             setNotificationChannels()
     }
 
-    override fun onTerminate() {
-        super.onTerminate()
-        val notificationManager = applicationContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.cancelAll()
-    }
-
     @SuppressLint("NewApi")
     private fun setNotificationChannels() {
 

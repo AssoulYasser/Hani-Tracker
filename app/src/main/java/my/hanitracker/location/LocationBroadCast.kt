@@ -7,7 +7,6 @@ import android.util.Log
 
 class LocationBroadCast : BroadcastReceiver() {
 
-
     override fun onReceive(context: Context?, intent: Intent?) {
         when(intent?.action) {
             LocationService.STOP -> {
@@ -19,4 +18,5 @@ class LocationBroadCast : BroadcastReceiver() {
         }
 
     }
+
 }

@@ -28,7 +28,6 @@ class MapActivity : ComponentActivity() {
 
         setContent {
             val isLoading = remember { mutableStateOf(false) }
-            val isTracking = remember { mutableStateOf(false) }
 
             fun startLoading() {
                 isLoading.value = true
@@ -45,7 +44,6 @@ class MapActivity : ComponentActivity() {
                     startTracking = { startTracking() },
                     stopTracking = { stopTracking() },
                     onCenterCameraPosition = { centerCameraPosition() },
-                    onListingOnlinePeople = { listOnlinePeople() },
                 ) { mapView ->
                     Log.d("DEBUGGING : ", "onCreate: BEFORE HAVING BITMAP EXCEPTION")
                     mapBusinessLogic = MapBusinessLogic(this, mapView)
@@ -55,8 +53,12 @@ class MapActivity : ComponentActivity() {
         }
     }
 
-    private fun listOnlinePeople() : MutableList<UserPlaceNameLocationDataClass> {
-        return mapBusinessLogic.getActiveUsersPlaces()
+    override fun onDestroy() {
+        super.onDestroy()
+        Intent(this, LocationService::class.java).apply {
+            action = LocationService.STOP
+            startService(this)
+        }
     }
 
     private fun centerCameraPosition() {

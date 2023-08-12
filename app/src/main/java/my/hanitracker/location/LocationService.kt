@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import my.hanitracker.R
 import my.hanitracker.firebase.LocationTrackingBusinessLogic
+import my.hanitracker.map.MapBusinessLogic
 
 class LocationService : Service() {
 
@@ -53,6 +54,7 @@ class LocationService : Service() {
     }
 
     private fun enableNetwork() {
+        MapBusinessLogic.isConnectivityProvided.value = false
         val closeServiceIntent = Intent(this, LocationBroadCast::class.java).apply {
             action = STOP
         }
@@ -71,7 +73,7 @@ class LocationService : Service() {
     }
 
     private fun enableGps() {
-
+        MapBusinessLogic.isGpsProvided.value = false
         val goToGpsSettingsIntent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
         val goToGpsSettingsIntentPendingIntent = PendingIntent.getActivity(this, 0, goToGpsSettingsIntent, PendingIntent.FLAG_IMMUTABLE)
 
@@ -118,6 +120,9 @@ class LocationService : Service() {
             .catch { e -> Log.d(TAG, "startCoroutine getLocationUpdate Exception: ${e.printStackTrace()}") }
             .onEach { location ->
                 if (connectivityManager.activeNetworkInfo?.isConnectedOrConnecting == true) {
+                    MapBusinessLogic.isTracking.value = true
+                    MapBusinessLogic.isConnectivityProvided.value = true
+                    MapBusinessLogic.isGpsProvided.value = true
                     isNetworkProvided = true
                     val latitude = location.latitude
                     val longitude = location.longitude
@@ -147,14 +152,17 @@ class LocationService : Service() {
     }
 
     private fun stopCoroutine() {
+        MapBusinessLogic.isTracking.value = false
+        notificationManager.cancelAll()
         locationTrackingBusinessLogic.deleteLocationFromCloud()
         stopForeground(true)
         stopSelf()
+        service.cancel()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        service.cancel()
+        stopCoroutine()
     }
 
     companion object {

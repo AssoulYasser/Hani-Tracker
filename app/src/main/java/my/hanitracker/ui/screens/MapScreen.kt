@@ -1,7 +1,7 @@
 package my.hanitracker.ui.screens
 
+import android.annotation.SuppressLint
 import android.content.res.Resources
-import android.util.Log
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
@@ -23,7 +23,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,7 +34,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.consumeAllChanges
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -42,17 +44,17 @@ import my.hanitracker.R
 import my.hanitracker.location.UserPlaceNameLocationDataClass
 import my.hanitracker.map.MapBusinessLogic
 
+@SuppressLint("StateFlowValueCalledInComposition")
 @Composable
 fun MapScreen(
     startTracking : () -> Boolean,
     stopTracking : () -> Unit,
     onCenterCameraPosition : () -> Unit,
-    onListingOnlinePeople: () -> MutableList<UserPlaceNameLocationDataClass>,
     onStart : (MapView) -> Unit
 ) {
 
-    val isTracking = remember { mutableStateOf(false) }
-    var list = mutableListOf<UserPlaceNameLocationDataClass>()
+//    val isTracking = remember { mutableStateOf(false) }
+//    var list = mutableListOf<UserPlaceNameLocationDataClass>()
 
     val displayMetrics = Resources.getSystem().displayMetrics
     val density = LocalDensity.current
@@ -64,10 +66,10 @@ fun MapScreen(
         targetValue = pointerOffset.value,
         animationSpec = tween(if(isUnderDraggingEffect.value) 0 else 500)
     )
-
-
-    if (pointerOffset.value == 0f) list = onListingOnlinePeople()
-    else if (pointerOffset.value == base) list.clear()
+//
+//
+//    if (pointerOffset.value == 0f) list = onListingOnlinePeople()
+//    else if (pointerOffset.value == base) list.clear()
 
     Box(
         modifier = Modifier
@@ -94,16 +96,16 @@ fun MapScreen(
                 .padding(horizontal = 20.dp, vertical = 40.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (isTracking.value) {
+            if (MapBusinessLogic.isTracking.value) {
                 ListOnlinePeople {
                     pointerOffset.value = 0f
-                    list.addAll(onListingOnlinePeople())
+//                    list.addAll(onListingOnlinePeople())
                 }
                 Spacer(modifier = Modifier.height(20.dp))
                 CenterCameraPosition(onCenterCameraPosition)
             }
             Spacer(modifier = Modifier.height(20.dp))
-            TrackingButton(isTracking = isTracking, startTracking = startTracking, stopTracking = stopTracking)
+            TrackingButton(isTracking = MapBusinessLogic.isTracking, startTracking = startTracking, stopTracking = stopTracking)
         }
 
 
@@ -143,7 +145,7 @@ fun MapScreen(
                     .background(Color.Black))
             }
             LazyColumn() {
-                items(items = list) { user ->
+                items(items = MapBusinessLogic.users) { user ->
                     Text(text = user.placeName)
                 }
             }
@@ -204,6 +206,7 @@ fun CenterCameraPosition(onCenterCameraPosition: () -> Unit) {
     }
 }
 
+@SuppressLint("StateFlowValueCalledInComposition")
 @Composable
 fun TrackingButton(isTracking: MutableState<Boolean>, startTracking: () -> Boolean, stopTracking: () -> Unit) {
 
@@ -211,10 +214,10 @@ fun TrackingButton(isTracking: MutableState<Boolean>, startTracking: () -> Boole
         onClick = {
             if (isTracking.value) {
                 stopTracking()
-                isTracking.value = false
             }
-            else
-                isTracking.value = startTracking()
+            else {
+                startTracking()
+            }
         },
         modifier = Modifier.size(60.dp),
         shape = CircleShape,

@@ -1,6 +1,7 @@
 package my.hanitracker.user
 
 import android.net.Uri
+import android.util.Log
 
 
 object UserLocalStorage {
