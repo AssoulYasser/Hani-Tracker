@@ -10,7 +10,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import my.hanitracker.location.LocationService
-import my.hanitracker.location.UserPlaceNameLocationDataClass
 import my.hanitracker.manager.PermissionManager
 import my.hanitracker.map.MapBusinessLogic
 import my.hanitracker.ui.screens.MapScreen
@@ -43,7 +42,9 @@ class MapActivity : ComponentActivity() {
                 MapScreen(
                     startTracking = { startTracking() },
                     stopTracking = { stopTracking() },
-                    onCenterCameraPosition = { centerCameraPosition() },
+                    onCenterCameraPosition = { latitide, longitude ->
+                        centerCameraPosition(latitide, longitude)
+                    },
                 ) { mapView ->
                     Log.d("DEBUGGING : ", "onCreate: BEFORE HAVING BITMAP EXCEPTION")
                     mapBusinessLogic = MapBusinessLogic(this, mapView)
@@ -55,14 +56,14 @@ class MapActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        Intent(this, LocationService::class.java).apply {
-            action = LocationService.STOP
-            startService(this)
-        }
+        stopTracking()
     }
 
-    private fun centerCameraPosition() {
-        mapBusinessLogic.adjustCameraPosition()
+    private fun centerCameraPosition(latitide: Double?, longitude: Double?) {
+        if (latitide == null && longitude == null)
+            mapBusinessLogic.adjustCameraPosition()
+        else if (latitide != null && longitude != null)
+            mapBusinessLogic.adjustCameraPosition(latitide, longitude)
     }
 
     private fun checkNotificationPermission() {

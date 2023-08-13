@@ -64,7 +64,7 @@ class LocationService : Service() {
             .setContentTitle("No network provided")
             .setContentText("trying to reconnect ... ")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .addAction(R.drawable.baseline_close_24, "Stop tracking", closeServicePendingIntent)
+//            .addAction(R.drawable.baseline_close_24, "Stop tracking", closeServicePendingIntent)
             .setOngoing(true)
             .build()
         notificationManager.notify(resources.getInteger(R.integer.location_update), notification)
@@ -87,7 +87,7 @@ class LocationService : Service() {
             .setContentText("Enable it so your friends can still finds you")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .addAction(R.drawable.baseline_gps_fixed_24, "Go to settings", goToGpsSettingsIntentPendingIntent)
-            .addAction(R.drawable.baseline_close_24, "Stop tracking", closeServicePendingIntent)
+//            .addAction(R.drawable.baseline_close_24, "Stop tracking", closeServicePendingIntent)
             .setOngoing(true)
             .build()
 
@@ -110,7 +110,7 @@ class LocationService : Service() {
             .setContentTitle("Tracking Location ...")
             .setContentText("Location: calculating ...")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .addAction(R.drawable.baseline_close_24, "Stop tracking", closeServicePendingIntent)
+//            .addAction(R.drawable.baseline_close_24, "Stop tracking", closeServicePendingIntent)
             .setOngoing(true)
 
         locationTracker.checkGpsProvider(1000L)
@@ -158,11 +158,6 @@ class LocationService : Service() {
         stopForeground(true)
         stopSelf()
         service.cancel()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        stopCoroutine()
     }
 
     companion object {

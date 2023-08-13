@@ -2,14 +2,21 @@ package my.hanitracker.ui.screens
 
 import android.annotation.SuppressLint
 import android.content.res.Resources
+import android.net.Uri
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,6 +27,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,10 +42,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.consumeAllChanges
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import coil.Coil
+import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
+import coil.compose.ImagePainter
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageScope
+import coil.compose.rememberImagePainter
 import com.mapbox.maps.MapView
 import com.mapbox.maps.ResourceOptionsManager
 import my.hanitracker.R
@@ -49,7 +65,7 @@ import my.hanitracker.map.MapBusinessLogic
 fun MapScreen(
     startTracking : () -> Boolean,
     stopTracking : () -> Unit,
-    onCenterCameraPosition : () -> Unit,
+    onCenterCameraPosition : (latitude: Double?, longitude: Double?) -> Unit,
     onStart : (MapView) -> Unit
 ) {
 
@@ -146,7 +162,35 @@ fun MapScreen(
             }
             LazyColumn() {
                 items(items = MapBusinessLogic.users) { user ->
-                    Text(text = user.placeName)
+                    Row(
+                        modifier = Modifier
+                            .padding(vertical = 10.dp)
+                            .clickable {
+                                onCenterCameraPosition(user.latitude, user.longitude)
+                                pointerOffset.value = base
+                            },
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .padding(horizontal = 5.dp)
+                                .padding(start = 5.dp)
+                                .weight(0.25f)
+                        ) {
+                            ProfilePictureImage(user.user.pfp)
+                        }
+                        Column(
+                            modifier = Modifier
+                                .padding(horizontal = 5.dp)
+                                .padding(end = 5.dp),
+                            horizontalAlignment = Alignment.Start,
+                            verticalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            Text(text = "${user.user.firstName} ${user.user.lastName}")
+                            Text(text = user.placeName)
+                        }
+                    }
                 }
             }
         }
@@ -155,6 +199,17 @@ fun MapScreen(
 
     }
 
+}
+
+@Composable
+fun ProfilePictureImage(pfp: Uri) {
+    SubcomposeAsyncImage(
+        model = pfp,
+        loading = { CircularProgressIndicator() },
+        contentDescription = null,
+        modifier = Modifier
+            .clip(CircleShape)
+    )
 }
 
 suspend fun PointerInputScope.dragEvent(
@@ -191,9 +246,9 @@ fun ListOnlinePeople(onListingOnlinePeople: () -> Unit) {
 }
 
 @Composable
-fun CenterCameraPosition(onCenterCameraPosition: () -> Unit) {
+fun CenterCameraPosition(onCenterCameraPosition: (latitude: Double?, longitude: Double?) -> Unit) {
     FloatingActionButton(
-        onClick = onCenterCameraPosition,
+        onClick = { onCenterCameraPosition(null, null) },
         modifier = Modifier.size(40.dp),
         shape = CircleShape,
         containerColor = Color.White

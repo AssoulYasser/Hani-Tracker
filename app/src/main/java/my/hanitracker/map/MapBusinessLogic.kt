@@ -46,7 +46,7 @@ class MapBusinessLogic(private val activity: Activity, mapView: MapView) {
             latitude = userLocation.latitude,
             longitude = userLocation.longitude,
             onSuccess = {
-                users.add(UserPlaceNameLocationDataClass(userLocation.user, it))
+                users.add(UserPlaceNameLocationDataClass(userLocation.user, it, userLocation.latitude, userLocation.longitude))
             },
             onFailure = {
                 Toast.makeText(context, "Somethings went wrong in Map Box Business Logic", Toast.LENGTH_LONG).show()
@@ -78,7 +78,7 @@ class MapBusinessLogic(private val activity: Activity, mapView: MapView) {
                 var index = 0
                 users.forEach{ user ->
                     if (user.user.uid == uid) {
-                        users[index] = UserPlaceNameLocationDataClass(user.user, it)
+                        users[index] = UserPlaceNameLocationDataClass(user.user, it, latitude, longitude)
                         return@forEach
                     }
                     index += 1
@@ -106,7 +106,8 @@ class MapBusinessLogic(private val activity: Activity, mapView: MapView) {
                 if (user.user.uid == uid)
                     return
             }
-            users.removeAt(userToDelete)
+            if (userToDelete >= 0)
+                users.removeAt(userToDelete)
         }
     }
 
@@ -136,6 +137,10 @@ class MapBusinessLogic(private val activity: Activity, mapView: MapView) {
         val latitude = userGeometry.geometry.latitude()
         val longitude = userGeometry.geometry.longitude()
         mapBoxManager.adjustCameraPosition(20.0, latitude, longitude)
+    }
+
+    fun adjustCameraPosition(latitude: Double, longitude: Double){
+         mapBoxManager.adjustCameraPosition(20.0, latitude, longitude)
     }
 
     fun onException() {
